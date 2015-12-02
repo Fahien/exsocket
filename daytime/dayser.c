@@ -38,14 +38,22 @@ int main(int argc, char **argv) {
 
     // Wait for client requests
     int connfd;
+    struct sockaddr_in6 cliaddr;
+    socklen_t clilen;
+    clilen = sizeof(cliaddr);
+    bzero(&cliaddr, clilen);
     int n;
     time_t ticks;
     char buff[MAXLINE];
     while (1) {
-        if ((connfd = accept(listenfd, (struct sockaddr *) NULL, NULL)) < 0) {
+        if ((connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen)) < 0) {
             perror("accept");
             return 1;
         }
+
+        // Convert the client address
+        inet_ntop(AF_INET6, &cliaddr.sin6_addr, buff, INET6_ADDRSTRLEN);
+        printf("Serving new client from %s:%d\n", buff, ntohs(cliaddr.sin6_port));
 
         // Send the time to the client
         ticks = time(NULL);
