@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
     servaddr.sin6_family = AF_INET6;
     servaddr.sin6_port = htons(atoi(argv[2]));
 
-    // Convert IPv6 address in the network representation
+    // Convert the IPv6 address in the network representation
     if (inet_pton(AF_INET6, argv[1], &servaddr.sin6_addr) <= 0) {
         perror("inet_pton");
         return -1;
@@ -34,6 +34,19 @@ int main(int argc, char **argv) {
         perror("connect");
         return -1;
     }
+
+    // Get the local address
+    struct sockaddr_in6 cliaddr;
+    socklen_t clilen = sizeof(cliaddr);
+    bzero(&cliaddr, clilen);
+    if (getsockname(sockfd, (struct sockaddr *) &cliaddr, &clilen) < 0) {
+        perror("getsockname");
+        return -1;
+    }
+    // Convert the IPv6 address in the host representation
+    char clistr[INET6_ADDRSTRLEN];
+    inet_ntop(AF_INET6, &cliaddr.sin6_addr, clistr, INET6_ADDRSTRLEN);
+    printf("The current address is %s:%d\n", clistr, ntohs(cliaddr.sin6_port));
 
     // Read from the socket buffer
     int n;
