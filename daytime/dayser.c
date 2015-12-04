@@ -58,7 +58,21 @@ int main(int argc, char **argv) {
         // Send the time to the client
         ticks = time(NULL);
         snprintf(buff, sizeof(buff), "%.24s\r\n", ctime(&ticks));
-        while ((n = write(connfd, buff, strlen(buff))) < 0);
+        if ((n = write(connfd, buff, strlen(buff))) < 0) {
+            perror("write");
+            return -1;
+        }
+
+        // Receive acknowledgement
+        char recvline[MAXLINE + 1];
+        if ((n = read(connfd, recvline, MAXLINE)) > 0) {
+            recvline[n] = 0;
+            fputs(recvline, stdout);
+        }
+        if (n < 0) {
+            perror("read");
+            return -1;
+        }
 
         // Close the connection
         close(connfd);

@@ -51,12 +51,19 @@ int main(int argc, char **argv) {
     // Read from the socket buffer
     int n;
     char recvline[MAXLINE + 1];
-    while ((n = read(sockfd, recvline, MAXLINE)) > 0) {
+    if ((n = read(sockfd, recvline, MAXLINE)) > 0) {
         recvline[n] = 0;
         fputs(recvline, stdout);
     }
     if (n < 0) {
         perror("read");
+        return -1;
+    }
+
+    // Send acknowledgement
+    char *ack = "Message received\n";
+    if ((n = write(sockfd, ack, strlen(ack))) < 0) {
+        perror("write");
         return -1;
     }
 
