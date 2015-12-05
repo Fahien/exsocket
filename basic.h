@@ -25,4 +25,8 @@
 #define BACKLOG 5 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
+ssize_t exso_read(int fd, char *ptr);
+ssize_t exso_readln(int fd, void *vptr, size_t maxlen);
+ssize_t exso_writen(int fd, const void *vptr, size_t n);
+
 #endif
