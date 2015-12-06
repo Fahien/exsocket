@@ -1,5 +1,7 @@
 #include "../basic.h"
 
+void handle_zombies(int signo);
+
 void server_echo(int sockfd);
 
 /*
@@ -11,6 +13,12 @@ int main(int argc, char **argv) {
     if (argc != 2){
         printf("Usage: ./echosrv <PORT>\n");
         return -1; 
+    }
+
+    // Handle the zombies
+    if (signal(SIGCHLD, handle_zombies) < 0) {
+        perror("signal");
+        return -1;
     }
 
     // Create the socket
@@ -62,6 +70,15 @@ int main(int argc, char **argv) {
 
         // Close the connection
         close(connfd);
+    }
+}
+
+void handle_zombies(int signo) {
+    pid_t pid;
+    int stat;
+
+    while ((pid = waitpid(-1, &stat, WNOHANG)) > 0) {
+        printf("Child %d terminated with exit status %d\n", pid, stat);
     }
 }
 
