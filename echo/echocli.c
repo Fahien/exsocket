@@ -48,14 +48,50 @@ int main(int argc, char **argv) {
 
 
 int client_echo(FILE *fp, int sockfd) {
+    
+    fd_set readset;
+    FD_ZERO(&readset);
+    int maxfd;
+
+    int n;
     char sendline[MAXLINE];
     char recvline[MAXLINE];
-    while (fgets(sendline, MAXLINE, fp) != NULL) {
-        exso_writen(sockfd, sendline, strlen(sendline));
-        if (exso_readln(sockfd, recvline, MAXLINE) == 0) {
-            printf("Server terminated prematurely\n");
+
+    while (1) {
+        // Initialize the arguments for the select function
+        FD_SET(fileno(fp), &readset);
+        FD_SET(sockfd, &readset);
+        maxfd = MAX(fileno(fp), sockfd) + 1;
+
+        if (select(maxfd, &readset, NULL, NULL, NULL) < 0) {
+            perror("select");
             return -1;
         }
-        fputs(recvline, stdout);
+
+        // Check whether the socket is ready for reading (a message has arrived)
+        if (FD_ISSET(sockfd, &readset)) {
+            if ((n = exso_readln(sockfd, recvline, MAXLINE)) < 0) {
+                perror("exso_readln");
+                return -1;
+            }
+            if (n == 0) {
+                printf("Server terminated prematurely\n");
+                return -1;
+            }
+            fputs(recvline, stdout);
+        }
+
+        // Check whether fp is ready for reading
+        if (FD_ISSET(fileno(fp), &readset)) {
+            if (fgets(sendline, MAXLINE, fp) == NULL) {
+                return 0;
+            }
+            if (exso_writen(sockfd, sendline, strlen(sendline)) < 0) {
+                perror("exso_writen");
+                return -1;
+            }
+        }
     }
+
+    return 0;
 }
