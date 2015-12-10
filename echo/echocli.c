@@ -56,10 +56,13 @@ int client_echo(FILE *fp, int sockfd) {
     int n;
     char sendline[MAXLINE];
     char recvline[MAXLINE];
+    char stdineof = 0;
 
     while (1) {
         // Initialize the arguments for the select function
-        FD_SET(fileno(fp), &readset);
+        if (stdineof == 0) {
+            FD_SET(fileno(fp), &readset);
+        }
         FD_SET(sockfd, &readset);
         maxfd = MAX(fileno(fp), sockfd) + 1;
 
@@ -75,6 +78,9 @@ int client_echo(FILE *fp, int sockfd) {
                 return -1;
             }
             if (n == 0) {
+                if (stdineof == 1) {
+                    return 0;
+                }
                 printf("Server terminated prematurely\n");
                 return -1;
             }
@@ -84,7 +90,10 @@ int client_echo(FILE *fp, int sockfd) {
         // Check whether fp is ready for reading
         if (FD_ISSET(fileno(fp), &readset)) {
             if (fgets(sendline, MAXLINE, fp) == NULL) {
-                return 0;
+                stdineof = 1;
+                shutdown(sockfd, SHUT_WR);
+                FD_CLR(fileno(fp), &readset);
+                continue;
             }
             if (exso_writen(sockfd, sendline, strlen(sendline)) < 0) {
                 perror("exso_writen");
