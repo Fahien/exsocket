@@ -3,7 +3,7 @@
 int client_echo(FILE *fp, int sockfd); 
 
 /*
- * Client that queries an echo Server
+ * Client that queries an echo Server using I/O Multiplexing
  */
 int main(int argc, char **argv) {
 

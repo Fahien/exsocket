@@ -1,11 +1,7 @@
 #include "../basic.h"
 
-void handle_zombies(int signo);
-
-void server_echo(int sockfd);
-
 /*
- * Servers that echoes a client through a child process
+ * Servers that echoes a Client using I/O Multiplexing
  */
 int main(int argc, char **argv) {
 
@@ -13,12 +9,6 @@ int main(int argc, char **argv) {
     if (argc != 2){
         printf("Usage: ./echosrv <PORT>\n");
         return -1; 
-    }
-
-    // Handle the zombies
-    if (signal(SIGCHLD, handle_zombies) < 0) {
-        perror("signal");
-        return -1;
     }
 
     // Create the socket
@@ -46,49 +36,95 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    // Wait for client requests
+    // Initialize arguments for the select function
+    int maxfd = listenfd;
+    
+    // Initialize client array
+    int client[FD_SETSIZE];
+    for (int i = 0; i < FD_SETSIZE; i++) {
+        client[i] = -1;
+    }
+    
+    // Initialize all descriptors
+    fd_set rset;
+    fd_set allset;
+    FD_ZERO(&allset);
+    FD_SET(listenfd, &allset);
+
+    // Ready descriptors
+    int ready;
     int connfd;
+    int sockfd;
+    int i;
+    int n;
     struct sockaddr_in6 cliaddr;
     socklen_t clilen = sizeof(cliaddr);
-    pid_t childpid;
+    char buff[MAXLINE];
     while (1) {
-        if ((connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen)) < 0) {
-            if (errno == EINTR) {
-                continue;
-            } else {
+        rset = allset;
+        if ((ready = select(maxfd + 1, &rset, NULL, NULL, NULL)) < 0) {
+            perror("select");
+            return -1;
+        }
+
+        // Check for new client
+        if (FD_ISSET(listenfd, &rset)) {
+            if ((connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen)) < 0) {
                 perror("accept");
                 return -1;
             }
+            // Save connected socket descriptor in the client array
+            for (i = 0; i < FD_SETSIZE; i++) {
+                if (client[i] < 0) {
+                    client[i] = connfd;
+                    break;
+                }
+            }
+
+            // Ragequit on too many requests
+            if (i == FD_SETSIZE) {
+                printf("Too many clients\n");
+                return -1;
+            }
+
+            // Add connfd to allset
+            FD_SET(connfd, &allset);
+            if (connfd > maxfd) {
+                maxfd = connfd;
+            }
+
+            // Check whether there aren't other ready sockets
+            if (--ready <= 0) {
+                continue;
+            }
         }
 
-        // Create a child process to serve the client
-        if ((childpid = fork()) == 0) {
-            close(listenfd);
-            server_echo(connfd);
-            return 0;
+        // Serve clients
+        for (i = 0; i < FD_SETSIZE; i++) {
+            if ((sockfd = client[i]) < 0) {
+                continue;
+            }
+
+            if (FD_ISSET(sockfd, &rset)) {
+                if ((n = exso_readln(sockfd, buff, MAXLINE)) < 0) {
+                    perror("exso_readln");
+                }
+                else if (n == 0) {
+                    printf("A client is gone\n");
+                    close(sockfd);
+                    FD_CLR(sockfd, &allset);
+                    client[i] = -1;
+                } else {
+                    if (exso_writen(sockfd, buff, n) < 0) {
+                        perror("exso_writen");
+                    }
+                }
+
+                // Check whether there aren't other ready sockets
+                if (--ready <= 0) {
+                    break;
+                }
+            }
         }
-
-        // Close the connection
-        close(connfd);
-    }
-}
-
-void handle_zombies(int signo) {
-    pid_t pid;
-    int stat;
-
-    while ((pid = waitpid(-1, &stat, WNOHANG)) > 0) {
-        printf("Child %d terminated with exit status %d\n", pid, stat);
-    }
-}
-
-void server_echo(int sockfd) {
-    ssize_t n;
-    char line[MAXLINE];
-    while (1) {
-        if ((n = exso_readln(sockfd, line, MAXLINE)) == 0) {
-            return; // connection closed by the other end
-        }
-        exso_writen(sockfd, line, n);
     }
 }
