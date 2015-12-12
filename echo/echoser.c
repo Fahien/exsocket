@@ -60,6 +60,7 @@ int main(int argc, char **argv) {
     struct sockaddr_in6 cliaddr;
     socklen_t clilen = sizeof(cliaddr);
     char buff[MAXLINE];
+    char addrbuff[INET6_ADDRSTRLEN];
     while (1) {
         rset = allset;
         if ((ready = select(maxfd + 1, &rset, NULL, NULL, NULL)) < 0) {
@@ -73,6 +74,10 @@ int main(int argc, char **argv) {
                 perror("accept");
                 return -1;
             }
+            // Convert IPv6 address to presentation
+            inet_ntop(AF_INET6, &cliaddr.sin6_addr, addrbuff, INET6_ADDRSTRLEN);
+            printf("Connected client from %s:%d\n", addrbuff, ntohs(cliaddr.sin6_port));
+
             // Save connected socket descriptor in the client array
             for (i = 0; i < FD_SETSIZE; i++) {
                 if (client[i] < 0) {
@@ -110,13 +115,21 @@ int main(int argc, char **argv) {
                     perror("exso_readln");
                 }
                 else if (n == 0) {
-                    printf("A client is gone\n");
+                    // Convert IPv6 address to presentation
+                    inet_ntop(AF_INET6, &cliaddr.sin6_addr, addrbuff, INET6_ADDRSTRLEN);
+                    printf("Disconnected client from %s:%d\n", addrbuff, ntohs(cliaddr.sin6_port));
+                    
                     close(sockfd);
                     FD_CLR(sockfd, &allset);
                     client[i] = -1;
                 } else {
-                    if (exso_writen(sockfd, buff, n) < 0) {
-                        perror("exso_writen");
+                    for (i = 0; i < FD_SETSIZE; i++) {
+                        if (sockfd == client[i] || client[i] == -1) {
+                            continue;
+                        }
+                        if (exso_writen(client[i], buff, n) < 0) {
+                            perror("exso_writen");
+                        }
                     }
                 }
 
