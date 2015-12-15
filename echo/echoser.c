@@ -1,5 +1,7 @@
 #include "../basic.h"
 
+#define MAXNICK 32
+
 /*
  * Servers that echoes a Client using I/O Multiplexing
  */
@@ -39,11 +41,14 @@ int main(int argc, char **argv) {
     // Initialize arguments for the select function
     int maxfd = listenfd;
     
-    // Initialize client array
+    // Initialize the array of clients
     int client[FD_SETSIZE];
     for (int i = 0; i < FD_SETSIZE; i++) {
         client[i] = -1;
     }
+
+    // Initialize the array of client nicknames
+    int nicknames[FD_SETSIZE][MAXNICK];
     
     // Initialize all descriptors
     fd_set rset;
@@ -60,6 +65,7 @@ int main(int argc, char **argv) {
     struct sockaddr_in6 cliaddr;
     socklen_t clilen = sizeof(cliaddr);
     char buff[MAXLINE];
+    char temp[MAXLINE];
     char addrbuff[INET6_ADDRSTRLEN];
     while (1) {
         rset = allset;
@@ -122,12 +128,26 @@ int main(int argc, char **argv) {
                     close(sockfd);
                     FD_CLR(sockfd, &allset);
                     client[i] = -1;
+                    bzero(nicknames[i], MAXNICK);
                 } else {
+                    if (nicknames[i][0] == 0) {
+                        if (strncmp(buff, "/nickname", 9) == 0) {
+                            sscanf(buff, "/nickname %s\n", nicknames[i]);
+                            sprintf(buff, "%s has joined the chat\n", nicknames[i]);
+                        } else {
+                            sprintf(buff, "Error, expecting /nickname <NICKNAME>\n");
+                            exso_writen(client[i], buff, strlen(buff));
+                            continue;
+                        }
+                    } else {
+                        sprintf(temp, "%s: %s", nicknames[i], buff);
+                        sprintf(buff, "%s", temp);
+                    }
                     for (i = 0; i < FD_SETSIZE; i++) {
                         if (sockfd == client[i] || client[i] == -1) {
                             continue;
                         }
-                        if (exso_writen(client[i], buff, n) < 0) {
+                        if (exso_writen(client[i], buff, strlen(buff)) < 0) {
                             perror("exso_writen");
                         }
                     }
