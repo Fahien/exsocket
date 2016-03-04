@@ -14,16 +14,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/stat.h> /* for S_xxx file mode constants */
 #include <sys/uio.h> /* for iovec{} and readv/writev */
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/un.h> /* for Unix domain sockets */
+#include <stdbool.h>
 
 #define MAXLINE 256
 #define PORT 9890
 #define BACKLOG 5 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define WAIT_ANY -1
+#define TRUE 1
+#define FALSE 0
 
 ssize_t exso_read(int fd, char *ptr);
 ssize_t exso_readln(int fd, void *vptr, size_t maxlen);

@@ -30,7 +30,7 @@ ssize_t exso_read(int fd, char *ptr) {
  * Reads a line
  */
 ssize_t exso_readln(int fd, void *vptr, size_t maxlen) {
-    int n;
+    size_t n;
     int rc;
     char c;
     char *ptr;
