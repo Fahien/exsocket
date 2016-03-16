@@ -26,7 +26,9 @@
 #define PORT 9890
 #define BACKLOG 5 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define WAIT_ANY -1
+  #ifndef WAIT_ANY
+  #define WAIT_ANY (-1)
+  #endif
 #define TRUE 1
 #define FALSE 0
 
