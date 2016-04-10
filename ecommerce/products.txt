@@ -1,0 +1,8 @@
+456 TABLET1 informatica
+457 SMARTPHONE1 informatica
+500 T-SHIRT1 abbigliamento
+601 LIBRO1 libri
+545 LIBRO2 libri
+666 PC1 informatica
+900 CAVETTO-ETHERNET elettronica
+901 TABLET2 informatica
